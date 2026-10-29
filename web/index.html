@@ -1,0 +1,115 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mini SQL Compiler</title>
+<style>
+:root{--bg:#0b1020;--panel:#121a2e;--line:#293653;--text:#e9eefc;--muted:#9eaccb;--blue:#7aa2ff;--green:#58d6a3;--red:#ff7b8a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#17264a,#0b1020 55%);color:var(--text);font:15px/1.5 Segoe UI,Arial,sans-serif}header{padding:26px max(22px,calc((100% - 1180px)/2));border-bottom:1px solid var(--line)}.kicker{color:var(--blue);font-size:12px;font-weight:800;letter-spacing:2px}h1{margin:5px 0;font-size:clamp(25px,4vw,36px)}.sub,.hint{color:var(--muted)}main{max-width:1180px;margin:24px auto;padding:0 20px}.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:linear-gradient(145deg,#141d32,#10182b);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}.wide{grid-column:1/-1}h2{font-size:16px;margin:0 0 13px}.hint{font-size:13px}textarea{width:100%;min-height:125px;background:#080e1c;color:#dce7ff;border:1px solid #304263;border-radius:10px;padding:14px;font:14px/1.6 Consolas,monospace}button{border-radius:9px;border:1px solid #39517d;background:#21365e;color:#fff;padding:10px 15px;font-weight:700;cursor:pointer;margin:3px}button.primary{background:#5077e8}.samples{margin-top:10px}.samples button{font-size:12px;padding:7px 9px}.pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.stage{border:1px solid var(--line);border-radius:10px;padding:12px;background:#0c1425}.stage .num{color:var(--blue);font-size:11px;font-weight:800}.stage strong{display:block;font-size:13px;margin:4px 0}.pill{font-size:11px;color:var(--muted)}.stage.pass{border-color:#286b5c}.stage.pass .pill,.count{color:var(--green)}
+.stage.fail{border-color:#a9364c;background:linear-gradient(145deg,#281521,#171222)}.stage.fail .pill{color:#ff7b8a}
+.stage.skipped{opacity:.58;border-style:dashed}.stage.skipped .pill{color:#9eaccb}
+.sample-note{width:100%;font-size:12px;color:var(--muted);padding:4px 3px}
+.status{min-height:24px}.error{color:var(--red)}button:hover{filter:brightness(1.13);transform:translateY(-1px)}button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.panel{box-shadow:0 12px 28px rgba(0,0,0,.12)}.result-top{display:flex;align-items:center;justify-content:space-between}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:10px 12px}th{background:#1b2944;color:#c9d8ff}.table-wrap{overflow:auto}.empty{color:var(--muted);padding:16px 0}.detail{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:8px 0}.detail summary{padding:12px;background:#17223a;cursor:pointer;font-weight:700}.detail pre{margin:0;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;background:#080e1b;color:#bed0f7;font:12px/1.5 Consolas,monospace;max-height:360px;overflow:auto}.error{color:var(--red);white-space:pre-wrap}.status{font-size:13px;color:var(--muted);margin-top:8px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:26px}@media(max-width:760px){.layout{grid-template-columns:1fr}.wide{grid-column:auto}.pipeline{grid-template-columns:repeat(2,1fr)}main{padding:0 12px}.panel{padding:15px}}
+</style></head><body><header><div class="kicker">BCSE307L · COMPILER DESIGN LAB</div><h1>Mini SQL Compiler</h1><p class="sub">SQL source → tokens → relational algebra → optimization → results</p></header>
+<main><div class="layout">
+<section class="panel"><h2>01 / SQL Query Editor</h2><p class="hint">Enter a query, or load a sample.</p><textarea id="sql" spellcheck="false">SELECT students.name, enrollments.course FROM students JOIN enrollments ON students.id = enrollments.student_id WHERE students.marks > 80 ORDER BY students.name;</textarea><p><button class="primary" id="run">▶ Compile &amp; Execute</button><button id="clear">Clear</button></p><div class="samples"><button data-q="SELECT name, marks FROM students WHERE marks > 80 ORDER BY marks DESC;">Filter + Sort</button>
+<button data-q="SELECT students.name, enrollments.course FROM students JOIN enrollments ON students.id = enrollments.student_id;">JOIN Demo</button>
+<button id="simpleSelect" type="button">Simple SELECT ↻</button>
+<button data-q="SELECT name, marks FROM students GROUP BY marks ORDER BY marks DESC;">GROUP BY Demo</button>
+<button id="testError" type="button">Next Error Example ↻</button>
+<div class="sample-note">Sample buttons load SQL into the editor. Press Compile &amp; Execute when ready.</div></div><div class="status" id="status">Ready · Persistent SQLite database</div></section>
+<section class="panel"><h2>02 / Compiler Pipeline</h2><p class="hint">Six stages of compilation.</p><div class="pipeline" id="pipeline"><div class="stage"><span class="num">STAGE 01</span><strong>Lexer</strong><span class="pill">Waiting</span></div><div class="stage"><span class="num">STAGE 02</span><strong>Parser</strong><span class="pill">Waiting</span></div><div class="stage"><span class="num">STAGE 03</span><strong>Semantic Analyzer</strong><span class="pill">Waiting</span></div><div class="stage"><span class="num">STAGE 04</span><strong>Query Translator</strong><span class="pill">Waiting</span></div><div class="stage"><span class="num">STAGE 05</span><strong>Optimizer</strong><span class="pill">Waiting</span></div><div class="stage"><span class="num">STAGE 06</span><strong>Executor</strong><span class="pill">Waiting</span></div></div><div class="status">Tables: students, enrollments · read-only demo</div></section>
+<section class="panel wide"><div class="result-top"><h2>03 / Query Result</h2><strong id="count" class="count"></strong></div><div id="results" class="empty">Run a query to display results.</div></section>
+<section class="panel wide"><h2>04 / Student Database (SQLite)</h2>
+<p class="hint">Add a student here. The record is saved to a real local database file and will still be there after you restart the app.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:12px 0">
+<label style="display:grid;gap:5px;color:var(--muted);font-size:13px">Student name<input id="newName" placeholder="e.g. Priya" style="padding:10px;border-radius:8px;border:1px solid #304263;background:#080e1c;color:var(--text)"></label>
+<label style="display:grid;gap:5px;color:var(--muted);font-size:13px">Marks<input id="newMarks" type="number" min="0" max="100" value="88" style="padding:10px;border-radius:8px;border:1px solid #304263;background:#080e1c;color:var(--text);width:110px"></label>
+<label style="display:grid;gap:5px;color:var(--muted);font-size:13px">Course<input id="newCourse" value="DBMS" style="padding:10px;border-radius:8px;border:1px solid #304263;background:#080e1c;color:var(--text)"></label>
+<button class="primary" id="addStudent">+ Add to database</button></div>
+<div id="dbMessage" class="status"></div><div id="studentList" class="empty">Loading database records…</div></section>
+<section class="panel wide"><h2>05 / Stage Inspector</h2><p class="hint">Expand each stage to inspect its output.</p><div id="details"><div class="empty">Compiler output will appear here.</div></div></section>
+</div><div class="footer">Mini SQL Compiler · Educational demo · Local machine only</div></main>
+<script>
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+document.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{ $('sql').value=b.dataset.q; $('sql').focus(); $('status').textContent='Sample query loaded into editor. Click Compile & Execute to run it.'; });
+const simpleSelectSamples = [
+ "SELECT name FROM students;",
+ "SELECT name, marks FROM students;",
+ "SELECT name, marks FROM students WHERE marks > 80 ORDER BY marks DESC;",
+ "SELECT students.name, enrollments.course FROM students JOIN enrollments ON students.id = enrollments.student_id;"
+];
+let simpleSelectIndex = 0;
+$('simpleSelect').onclick=()=>{
+ $('sql').value=simpleSelectSamples[simpleSelectIndex];
+ simpleSelectIndex=(simpleSelectIndex+1)%simpleSelectSamples.length;
+ $('sql').focus();
+ $('status').textContent='Example loaded. Click Compile & Execute to run it.';
+};
+const errorSamples = [
+ {label:'Unknown table',sql:'SELECT name, marks FROM missing_students WHERE marks > 80 ORDER BY marks DESC;'},
+ {label:'Unknown column',sql:'SELECT name, gpa FROM students WHERE marks > 80;'},
+ {label:'Syntax error',sql:'SELEC name FROM students;'},
+ {label:'Lexer error',sql:'SELECT name FROM students @;'},
+ {label:'Invalid JOIN table',sql:'SELECT students.name FROM students JOIN courses ON students.id = courses.student_id;'}
+];
+let errorSampleIndex=0;
+$('testError').onclick=()=>{
+ const ex=errorSamples[errorSampleIndex];
+ $('sql').value=ex.sql;
+ errorSampleIndex=(errorSampleIndex+1)%errorSamples.length;
+ $('sql').focus();
+ $('status').textContent=ex.label+' example loaded. Click Compile & Execute to see the compiler response.';
+};
+$('clear').onclick=()=>{$('sql').value='';$('results').innerHTML='<div class="empty">Enter a query and run it.</div>';$('details').innerHTML='';$('count').textContent='';$('status').textContent='Editor cleared';};
+$('run').onclick=runQuery;
+
+async function loadStudents(){
+ try{
+  const r=await fetch('/api/students');const d=await r.json();
+  $('studentList').innerHTML='<div class="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Marks</th></tr></thead><tbody>'+d.students.map(s=>'<tr><td>'+esc(s.id)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.marks)+'</td></tr>').join('')+'</tbody></table></div>';
+ }catch(e){$('studentList').textContent='Could not load database records.'}
+}
+$('addStudent').onclick=async()=>{
+ const name=$('newName').value.trim(), marks=$('newMarks').value, course=$('newCourse').value.trim();
+ try{
+  const r=await fetch('/api/students',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,marks,course})});
+  const d=await r.json();
+  if(!d.ok){$('dbMessage').innerHTML='<span class="error">'+esc(d.error)+'</span>';return}
+  $('dbMessage').textContent=d.message+' Now run SELECT name, marks FROM students; to see it.';
+  $('newName').value='';await loadStudents();
+ }catch(e){$('dbMessage').textContent='Could not save student: '+e.message}
+};
+loadStudents();
+
+async function runQuery(){
+ const sql=$('sql').value.trim();if(!sql){$('status').textContent='Enter an SQL query first.';return}
+ $('run').disabled=true;$('status').textContent='Compiling…';
+ try{
+  const response=await fetch('/api/compile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql})});const d=await response.json();
+  if(!d.ok){
+   $('status').innerHTML='<span class="error">Compilation failed · '+esc(d.error)+'</span>';
+   $('count').textContent='FAILED';
+   $('results').innerHTML='<div class="error"><strong>Query rejected</strong><p>'+esc(d.error)+'</p><p class="hint">Fix the SQL statement and run it again.</p></div>';
+   const names=['Lexer','Parser','Semantic Analyzer','Query Translator','Optimizer','Executor'];
+   const failed=Number.isInteger(d.failed_stage)?d.failed_stage:2;
+   $('pipeline').innerHTML=names.map((name,i)=>{
+    const state=i<failed?'pass':i===failed?'fail':'skipped';
+    const label=i<failed?'✓ PASS':i===failed?'✕ FAIL':'— SKIPPED';
+    return '<div class="stage '+state+'"><span class="num">STAGE 0'+(i+1)+'</span><strong>'+name+'</strong><span class="pill">'+label+'</span></div>';
+   }).join('');
+   $('details').innerHTML=names.map((name,i)=>{
+    const state=i<failed?'PASS':i===failed?'FAIL':'SKIPPED';
+    const detail=i<failed?'Stage completed before the error was detected.':i===failed?d.error:'Not run because an earlier stage failed.';
+    return '<details class="detail" '+(i===failed?'open':'')+'><summary>'+esc((i+1)+'. '+name+' · '+state)+'</summary><pre>'+esc(detail)+'</pre></details>';
+   }).join('');
+   return
+  }
+  $('status').textContent='Compilation successful · six stages completed';$('count').textContent=d.row_count+' row(s)';
+  $('pipeline').innerHTML=d.stages.map((s,i)=>'<div class="stage pass"><span class="num">STAGE 0'+(i+1)+'</span><strong>'+esc(s.name.replace(/^\\d+\\. /,''))+'</strong><span class="pill">✓ PASS</span></div>').join('');
+  if(!d.rows.length)$('results').innerHTML='<div class="empty">Query succeeded, but no rows matched.</div>';
+  else{$('results').innerHTML='<div class="table-wrap"><table><thead><tr>'+d.columns.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+d.rows.map(r=>'<tr>'+d.columns.map(c=>'<td>'+esc(r[c]??'')+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}
+  $('details').innerHTML=d.stages.map((s,i)=>'<details class="detail" '+(i===0?'open':'')+'><summary>'+esc(s.name)+' · '+esc(s.status)+'</summary><pre>'+esc(s.detail)+'\\n\\n'+esc(JSON.stringify(s.data,null,2))+'</pre></details>').join('');
+ }catch(e){$('status').textContent='Cannot reach local server. Start run_windows.bat.';$('results').innerHTML='<div class="error">'+esc(e.message)+'</div>'}
+ finally{$('run').disabled=false}
+}
+</script></body></html>
